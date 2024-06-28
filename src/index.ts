@@ -20,7 +20,11 @@ import {
   updateOrderItem,
   deleteOrderItem,
 } from "./functions/crud";
-import { placeOrder, getOrdersForCustomer } from "./functions/advanced";
+import {
+  placeOrder,
+  getOrdersForCustomer,
+  getOrdersForDay,
+} from "./functions/advanced";
 
 // // Create a new customer
 // const newCustomer = await createCustomer({
@@ -77,16 +81,20 @@ import { placeOrder, getOrdersForCustomer } from "./functions/advanced";
 // const menuItems = await getMenuItems();
 // console.log("All Menu Items:", menuItems);
 
-// Example: Place an order
-const newOrder = await placeOrder({
-  customerId: 1,
-  items: [
-    { menuItemId: 2, quantity: 4 },
-    { menuItemId: 3, quantity: 1 },
-  ],
-});
-console.log("New Order:", newOrder);
+// // Example: Place an order
+// const newOrder = await placeOrder({
+//   customerId: 1,
+//   items: [
+//     { menuItemId: 2, quantity: 4 },
+//     { menuItemId: 3, quantity: 1 },
+//   ],
+// });
+// console.log("New Order:", newOrder);
 
-// Example: Get orders by customer
-const customerOrders = await getOrdersForCustomer(1);
-console.log("Customer Orders:", customerOrders);
+// // Example: Get orders by customer
+// const customerOrders = await getOrdersForCustomer(1);
+// console.log("Customer Orders:", customerOrders);
+
+// // Example: find the total sales for a specific day
+// const totalSales = await getOrdersForDay({ date: "2024-06-28" });
+// console.log("Total Sales for Day:", totalSales);

@@ -18,6 +18,7 @@ import {
   customersToOrdersSchema,
   createOrder,
   createOrderItem,
+  createCustomer,
 } from "./crud";
 
 //REVIEW: Retrieve all orders for a specific customer sorted by the order's creation date.
@@ -106,4 +107,27 @@ export const placeOrder = async (data: z.infer<typeof placeOrderSchema>) => {
     return { success: true, orderId };
   });
   return success;
+};
+
+//REVIEW: Retrieve all orders for a specific day and find the total sales for that day.
+// Zod schemas for input validation
+export const getOrdersForDaySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD format
+});
+
+export const getOrdersForDay = async (
+  data: z.infer<typeof getOrdersForDaySchema>
+) => {
+  const { date } = getOrdersForDaySchema.parse(data);
+  const ordersList = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.orderDate, date));
+
+  const totalSales = ordersList.reduce(
+    (total, order) => total + order.totalAmount,
+    0
+  );
+
+  return { ordersList, totalSales };
 };
