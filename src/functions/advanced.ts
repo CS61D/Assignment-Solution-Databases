@@ -15,90 +15,12 @@ import {
   orderSchema,
   orderItemSchema,
   menuItemSchema,
+  customersToOrdersSchema,
+  createOrder,
+  createOrderItem,
 } from "./crud";
 
-// REVIEW: Data transaction: place an order
-
-// Helper function to create or update customer within transaction
-const createOrUpdateCustomer = async (
-  customerData: z.infer<typeof customerSchema>,
-  tx: any // Replace 'any' with the correct type based on your db implementation
-) => {
-  // Check if customer already exists by email or phone (assuming unique)
-  let existingCustomer = await db
-    .select()
-    .from(customers)
-    .where(
-      sql`email = ${customerData.email} OR phone = ${customerData.phone}`
-    )
-    .execute(tx);
-
-  if (existingCustomer.length > 0) {
-    // Update existing customer (assuming only name can be updated)
-    await db
-      .update(customers)
-      .set({ name: customerData.name })
-      .where(
-        sql`email = ${customerData.email} OR phone = ${customerData.phone}`
-      )
-      .execute(tx);
-
-    return existingCustomer[0];
-  } else {
-    // Insert new customer
-    const newCustomer = await db
-      .insert(customers)
-      .values(customerData)
-      .execute(tx);
-
-    return newCustomer;
-  }
-};
-
-export const placeOrder = async (
-  customerData: z.infer<typeof customerSchema>,
-  orderData: z.infer<typeof orderSchema>,
-  orderItemsData: z.infer<typeof orderItemSchema>[]
-) => {
-  try {
-    const order = await db.transaction(async (tx) => {
-      // Step 1: Insert customer (if not already existing)
-      const customer = await createOrUpdateCustomer(customerData, tx);
-
-      // Step 2: Insert order
-      const newOrder = await db
-        .insert(orders)
-        .values({
-          customerId: customer.id,
-          totalAmount: orderData.totalAmount,
-          orderDate: orderData.orderDate,
-        })
-        .execute(tx);
-
-      // Step 3: Insert order items
-      const orderItemsPromises = orderItemsData.map((item) =>
-        db
-          .insert(orderItems)
-          .values({
-            orderId: newOrder.lastInsertId,
-            menuItemId: item.menuItemId,
-            quantity: item.quantity,
-          })
-          .execute(tx)
-      );
-      await Promise.all(orderItemsPromises);
-
-      return newOrder;
-    });
-
-    return order;
-  } catch (error) {
-    console.error("Error placing order:", error);
-    throw error; // Re-throw the error for handling at a higher level
-  }
-};
-
-//Retrieve all orders for a specific customer sorted by the order's creation date.
+//REVIEW: Retrieve all orders for a specific customer sorted by the order's creation date.
 export const getOrdersForCustomer = async (customerId: number) => {
   // Get all order IDs for the customer
   const orderIds = await db
@@ -120,12 +42,68 @@ export const getOrdersForCustomer = async (customerId: number) => {
   return ordersList;
 };
 
-// Aggregate total sales for a given day
-export const getTotalSalesForDay = async (orderDate: string) => {
-  const ordersToday = await db
-    .select()
-    .from(orders)
-    .where(eq(orders.orderDate, orderDate));
+// REVIEW: Data transaction: place an order
+// Zod schemas for input validation
+export const placeOrderSchema = z.object({
+  customerId: z.number().positive(),
+  items: z.array(
+    z.object({
+      menuItemId: z.number().positive(),
+      quantity: z.number().positive(),
+    })
+  ),
+});
 
-  return result?.[0]?.totalAmount || 0; // Return 0 if no sales found for the day
+export const placeOrder = async (data: z.infer<typeof placeOrderSchema>) => {
+  const { customerId, items } = placeOrderSchema.parse(data);
+
+  const success = await db.transaction(async (tx) => {
+    // Calculate total amount
+    let totalAmount = 0;
+    for (const { menuItemId, quantity } of items) {
+      const menuItem = await tx
+        .select()
+        .from(menuItems)
+        .where(eq(menuItems.id, menuItemId));
+      if (!menuItem) {
+        throw new Error(`Menu item with ID ${menuItemId} not found`);
+      }
+      const itemTotal = menuItem[0].price * quantity;
+      totalAmount += itemTotal;
+    }
+
+    // Create order
+    const order = await tx
+      .insert(orders)
+      .values({
+        totalAmount,
+        orderDate: new Date().toISOString().split("T")[0], // YYYY-MM-DD format
+      })
+      .returning({ id: orders.id })
+      .then((result) => result[0]);
+
+    if (!order || !order.id) {
+      throw new Error("Failed to create order");
+    }
+
+    const orderId = order.id;
+
+    // Insert order items
+    for (const { menuItemId, quantity } of items) {
+      await tx.insert(orderItems).values({
+        orderId,
+        menuItemId,
+        quantity,
+      });
+    }
+
+    // Link customer to order
+    await tx.insert(customersToOrders).values({
+      customerId,
+      orderId: orderId as number,
+    });
+
+    return { success: true, orderId };
+  });
+  return success;
 };

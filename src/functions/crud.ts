@@ -15,12 +15,10 @@ export const customerSchema = z.object({
 
 export const menuItemSchema = z.object({
   name: z.string().min(1),
-  description: z.string().min(1),
   price: z.number().positive(),
 });
 
 export const orderSchema = z.object({
-  customerId: z.number().positive(),
   totalAmount: z.number().positive(),
   orderDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD format
 });
@@ -29,6 +27,11 @@ export const orderItemSchema = z.object({
   orderId: z.number().positive(),
   menuItemId: z.number().positive(),
   quantity: z.number().positive(),
+});
+
+export const customersToOrdersSchema = z.object({
+  customerId: z.number().positive(),
+  orderId: z.number().positive(),
 });
 
 // REVIEW: CRUD Functions for Customers
