@@ -21,7 +21,7 @@ import {
   createCustomer,
 } from "./crud";
 
-//REVIEW: Retrieve all orders for a specific customer sorted by the order's creation date.
+// Retrieve all orders for a specific customer sorted by the order's creation date.
 export const getOrdersForCustomer = async (customerId: number) => {
   // Get all order IDs for the customer
   const orderIds = await db
@@ -43,7 +43,7 @@ export const getOrdersForCustomer = async (customerId: number) => {
   return ordersList;
 };
 
-// REVIEW: Data transaction: place an order
+//  Data transaction: place an order
 // Zod schemas for input validation
 export const placeOrderSchema = z.object({
   customerId: z.number().positive(),
@@ -109,7 +109,7 @@ export const placeOrder = async (data: z.infer<typeof placeOrderSchema>) => {
   return success;
 };
 
-//REVIEW: Retrieve all orders for a specific day and find the total sales for that day.
+// Retrieve all orders for a specific day and find the total sales for that day.
 // Zod schemas for input validation
 export const getOrdersForDaySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD format

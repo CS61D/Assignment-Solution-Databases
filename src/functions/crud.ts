@@ -34,7 +34,7 @@ export const customersToOrdersSchema = z.object({
   orderId: z.number().positive(),
 });
 
-// REVIEW: CRUD Functions for Customers
+//  CRUD Functions for Customers
 export const createCustomer = async (data: z.infer<typeof customerSchema>) => {
   const parsedData = customerSchema.parse(data);
   return db.insert(customers).values(parsedData);
@@ -63,7 +63,7 @@ export const deleteCustomer = async (name: string) => {
   return await db.delete(customers).where(eq(customers.name, name));
 };
 
-// REVIEW: CRUD Functions for Menu Items
+//  CRUD Functions for Menu Items
 // Create a new menu item
 export const createMenuItem = async (data: z.infer<typeof menuItemSchema>) => {
   const parsedData = menuItemSchema.parse(data);
@@ -94,7 +94,7 @@ export const deleteMenuItem = async (id: number) => {
   return await db.delete(menuItems).where(eq(menuItems.id, id));
 };
 
-// REVIEW: CRUD Functions for Orders
+//  CRUD Functions for Orders
 // Create a new order
 export const createOrder = async (data: z.infer<typeof orderSchema>) => {
   const parsedData = orderSchema.parse(data);
@@ -125,7 +125,7 @@ export const deleteOrder = async (id: number) => {
   return await db.delete(orders).where(eq(orders.id, id));
 };
 
-// REVIEW: CRUD Functions for Order Items
+//  CRUD Functions for Order Items
 // Create a new order item
 export const createOrderItem = async (
   data: z.infer<typeof orderItemSchema>
