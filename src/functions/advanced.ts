@@ -22,7 +22,7 @@ import {
 } from "./crud";
 
 // Retrieve all orders for a specific customer sorted by the order's creation date.
-export const getOrdersForCustomer = async (customerId: number) => {
+export const getOrdersForCustomer = async (db, customerId: number) => {
   // Get all order IDs for the customer
   const orderIds = await db
     .select()
@@ -55,7 +55,10 @@ export const placeOrderSchema = z.object({
   ),
 });
 
-export const placeOrder = async (data: z.infer<typeof placeOrderSchema>) => {
+export const placeOrder = async (
+  db,
+  data: z.infer<typeof placeOrderSchema>
+) => {
   const { customerId, items } = placeOrderSchema.parse(data);
 
   const success = await db.transaction(async (tx) => {
@@ -116,6 +119,7 @@ export const getOrdersForDaySchema = z.object({
 });
 
 export const getOrdersForDay = async (
+  db,
   data: z.infer<typeof getOrdersForDaySchema>
 ) => {
   const { date } = getOrdersForDaySchema.parse(data);

@@ -89,3 +89,7 @@ export const orderItemsRelations = relations(orderItems, ({ one }) => ({
     references: [orders.id],
   }),
 }));
+
+export const menuItemsRelations = relations(menuItems, ({ many }) => ({
+  orderItems: many(orderItems),
+}));
