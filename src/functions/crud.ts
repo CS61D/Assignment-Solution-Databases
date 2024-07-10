@@ -3,6 +3,7 @@
 import { eq } from "drizzle-orm";
 import { customers, menuItems, orders, orderItems } from "../schemas/schema";
 import { z } from "zod";
+import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 
 // Create schemas validation with Zod
 export const customerSchema = z.object({
@@ -34,11 +35,11 @@ export const customersToOrdersSchema = z.object({
 
 // CRUD Functions for Customers
 export const createCustomer = async (
-  db,
+  db: BetterSQLite3Database,
   data: z.infer<typeof customerSchema>
 ) => {
   const parsedData = customerSchema.parse(data);
-  return await db.insert(customers).values(parsedData);
+  const data2 = await db.insert(customers).values(parsedData);
 };
 
 export const getCustomers = async (db) => {
