@@ -39,7 +39,7 @@ export const createCustomer = async (
   data: z.infer<typeof customerSchema>
 ) => {
   const parsedData = customerSchema.parse(data);
-  const data2 = await db.insert(customers).values(parsedData);
+  return await db.insert(customers).values(parsedData);
 };
 
 export const getCustomers = async (db) => {
