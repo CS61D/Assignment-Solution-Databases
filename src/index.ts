@@ -1,3 +1,4 @@
+import { customers } from "./schemas/schema";
 import {
   createCustomer,
   getCustomers,
@@ -28,7 +29,7 @@ import {
 import { Database } from "bun:sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 
-const db = drizzle(new Database("db/database.sqlite"));
+export const db = drizzle(new Database("../db/database.sqlite"));
 
 // // Create a new customer
 // const newCustomer = await createCustomer(db, {
@@ -36,6 +37,7 @@ const db = drizzle(new Database("db/database.sqlite"));
 //   email: "sk@example.com",
 //   phone: "987-654-3210",
 // });
+
 // console.log("New Customer:", newCustomer);
 
 // // Get all customers

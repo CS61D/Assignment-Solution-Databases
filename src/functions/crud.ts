@@ -1,5 +1,5 @@
-import { drizzle } from "drizzle-orm/bun-sqlite";
-import { Database } from "bun:sqlite";
+// import { drizzle } from "drizzle-orm/bun-sqlite";
+// import { Database } from "bun:sqlite";
 import { eq } from "drizzle-orm";
 import { customers, menuItems, orders, orderItems } from "../schemas/schema";
 import { z } from "zod";
@@ -158,4 +158,4 @@ export const deleteOrderItem = async (db, id: number) => {
   return await db.delete(orderItems).where(eq(orderItems.id, id));
 };
 
-await db.select({ value: sum(users.id) }).from(users);
+// await db.select({ value: sum(users.id) }).from(users);

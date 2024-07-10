@@ -1,6 +1,4 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { Database } from "bun:sqlite";
-import { drizzle } from "drizzle-orm/bun-sqlite";
 import {
   createCustomer,
   getCustomers,
@@ -8,6 +6,8 @@ import {
   updateCustomer,
   deleteCustomer,
 } from "../functions/crud";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import Database from "better-sqlite3";
 
 const db = drizzle(new Database("db/testdb.sqlite"));
 

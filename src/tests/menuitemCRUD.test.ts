@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { Database } from "bun:sqlite";
-import { drizzle } from "drizzle-orm/bun-sqlite";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import Database from "better-sqlite3";
 import {
   createMenuItem,
   getMenuItems,
