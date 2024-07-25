@@ -24,5 +24,5 @@
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
   },
-  "include": ["src", "src/tests/customerCRUD.test.ts"]
+  "include": ["src", "src/tests/BcustomerCRUD.test.ts"]
 }

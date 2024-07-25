@@ -5,7 +5,6 @@ import {
   real,
   primaryKey,
 } from "drizzle-orm/sqlite-core";
-import { z } from "zod";
 import { relations } from "drizzle-orm";
 
 export const customers = sqliteTable("customers", {

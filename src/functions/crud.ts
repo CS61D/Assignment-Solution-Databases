@@ -1,6 +1,4 @@
-// import { drizzle } from "drizzle-orm/bun-sqlite";
-// import { Database } from "bun:sqlite";
-import { eq } from "drizzle-orm";
+import { eq, gt } from "drizzle-orm";
 import { customers, menuItems, orders, orderItems } from "../schemas/schema";
 import { z } from "zod";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
@@ -42,10 +40,6 @@ export const createCustomer = async (
   return await db.insert(customers).values(parsedData);
 };
 
-export const getCustomers = async (db) => {
-  return await db.select().from(customers);
-};
-
 export const getCustomerByName = async (db, name: string) => {
   return await db.select().from(customers).where(eq(customers.name, name));
 };
@@ -75,25 +69,24 @@ export const createMenuItem = async (
   return await db.insert(menuItems).values(parsedData);
 };
 
-export const getMenuItems = async (db) => {
-  return await db.select().from(menuItems);
+export const getMenuItemByName = async (db, name: string) => {
+  return await db.select().from(menuItems).where(eq(menuItems.name, name));
 };
 
-export const getMenuItemById = async (db, id: number) => {
-  return await db.select().from(menuItems).where(eq(menuItems.id, id));
-};
-
-export const updateMenuItem = async (
+export const updateMenuItemByName = async (
   db,
-  id: number,
+  name: string,
   data: Partial<z.infer<typeof menuItemSchema>>
 ) => {
   const parsedData = menuItemSchema.partial().parse(data);
-  return await db.update(menuItems).set(parsedData).where(eq(menuItems.id, id));
+  return await db
+    .update(menuItems)
+    .set(parsedData)
+    .where(eq(menuItems.name, name));
 };
 
-export const deleteMenuItem = async (db, id: number) => {
-  return await db.delete(menuItems).where(eq(menuItems.id, id));
+export const deleteMenuItemByName = async (db, name: string) => {
+  return await db.delete(menuItems).where(eq(menuItems.name, name));
 };
 
 // CRUD Functions for Orders
@@ -132,10 +125,6 @@ export const createOrderItem = async (
   return await db.insert(orderItems).values(parsedData);
 };
 
-export const getOrderItemById = async (db, id: number) => {
-  return await db.select().from(orderItems).where(eq(orderItems.id, id));
-};
-
 export const getOrderItemsByOrderId = async (db, orderId: number) => {
   return await db
     .select()
@@ -145,18 +134,18 @@ export const getOrderItemsByOrderId = async (db, orderId: number) => {
 
 export const updateOrderItem = async (
   db,
-  id: number,
+  orderId: number,
+  menuItemId: number,
   data: Partial<z.infer<typeof orderItemSchema>>
 ) => {
   const parsedData = orderItemSchema.partial().parse(data);
   return await db
     .update(orderItems)
     .set(parsedData)
-    .where(eq(orderItems.id, id));
+    .where(eq(orderItems.orderId, orderId))
+    .where(eq(orderItems.menuItemId, menuItemId));
 };
 
-export const deleteOrderItem = async (db, id: number) => {
-  return await db.delete(orderItems).where(eq(orderItems.id, id));
+export const deleteOrderItemsbyOrderId = async (db, orderId: number) => {
+  return await db.delete(orderItems).where(eq(orderItems.orderId, orderId));
 };
-
-// await db.select({ value: sum(users.id) }).from(users);
