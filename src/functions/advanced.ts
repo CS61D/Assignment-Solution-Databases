@@ -8,28 +8,6 @@ import {
 } from "../schemas/schema";
 import { z } from "zod";
 
-// Retrieve all orders for a specific customer sorted by the order's creation date.
-export const getOrdersForCustomer = async (db, customerId: number) => {
-  // Get all order IDs for the customer
-  const orderIds = await db
-    .select()
-    .from(customersToOrders)
-    .where(eq(customersToOrders.customerId, customerId));
-
-  // For each order ID, get the order details and order by date
-  const ordersList = await Promise.all(
-    orderIds.map(async (order) => {
-      return await db
-        .select()
-        .from(orders)
-        .where(eq(orders.id, order.orderId))
-        .orderBy(desc(orders.orderDate));
-    })
-  );
-
-  return ordersList;
-};
-
 //  Data transaction: place an order
 // Zod schemas for input validation
 export const placeOrderSchema = z.object({
@@ -99,6 +77,28 @@ export const placeOrder = async (
     })
     .then(() => true);
   return { success: success, orderId: orderId };
+};
+
+// Retrieve all orders for a specific customer sorted by the order's creation date.
+export const getOrdersForCustomer = async (db, customerId: number) => {
+  // Get all order IDs for the customer
+  const orderIds = await db
+    .select()
+    .from(customersToOrders)
+    .where(eq(customersToOrders.customerId, customerId));
+
+  // For each order ID, get the order details and order by date
+  const ordersList = await Promise.all(
+    orderIds.map(async (order) => {
+      return await db
+        .select()
+        .from(orders)
+        .where(eq(orders.id, order.orderId))
+        .orderBy(desc(orders.orderDate));
+    })
+  );
+
+  return ordersList;
 };
 
 // Retrieve all orders for a specific day and find the total sales for that day.
