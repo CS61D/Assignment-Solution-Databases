@@ -6,10 +6,10 @@ To install dependencies:
 bun install
 ```
 
-To run:
+# Vitest to be fixed
 
-```bash
-bun run index.ts
-```
+All tests related to the Orders table are failing. It seems to be related to the way we test for foreign relations. However, the same structure works for the OrderItems table so I'm a bit confused.
+![Screen1](./Screenshot1.png)
 
-This project was created using `bun init` in bun v1.1.12. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+I couldn't test DorderCRUD.test.ts, EorderItemCRUD.test.ts, or FAdvancedOrder.test.ts since they all need to call createOrder and the test suggests that createOrder is missing this "customer_id" column. I'm not sure if it has to do with the schema definition or the vitest.
+![Screen1](./Screenshot2.png)

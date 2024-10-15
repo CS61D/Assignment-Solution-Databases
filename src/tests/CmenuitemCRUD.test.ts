@@ -3,9 +3,9 @@ import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
 import {
   createMenuItem,
-  getMenuItemByName,
-  updateMenuItemByName,
-  deleteMenuItemByName,
+  getMenuItemById,
+  updateMenuItemById,
+  deleteMenuItemById,
 } from "../functions/crud";
 import { eq, sql } from "drizzle-orm/sql";
 
@@ -20,34 +20,87 @@ beforeAll(() => {
   db.run(sql`DELETE FROM menu_items`);
   db.run(sql`DELETE FROM orders`);
   db.run(sql`DELETE FROM order_items`);
-  db.run(sql`DELETE FROM customers_to_orders`);
 
   // Re-enable foreign key checks
   db.run(sql`PRAGMA foreign_keys = ON`);
 });
-describe("Menu Items CRUD", () => {
-  const newMenuItem = {
-    name: "Pizza",
-    price: 12.99,
-  };
-  it("should create a new menu item", async () => {
-    const result = await createMenuItem(db, newMenuItem);
-    expect(result).toBeTruthy();
-    const menuItem = await getMenuItemByName(db, "Pizza");
-    expect(menuItem.length).toBe(1);
-    expect(menuItem[0]).toMatchObject(newMenuItem);
+describe("Menu Items CRUD Operations", () => {
+  it("should create a menu item", async () => {
+    const testMenuItem = {
+      name: "Fries",
+      price: 4.99,
+    };
+    const result = await createMenuItem(db, testMenuItem);
+    expect(result).toBeDefined();
+    expect(result.lastInsertRowid).toBeDefined();
   });
 
-  it("should update menu item details", async () => {
-    const updatedMenuItem = { price: 8.99 };
-    await updateMenuItemByName(db, "Pizza", updatedMenuItem);
-    const menuItem = await getMenuItemByName(db, "Pizza");
-    expect(menuItem[0].price).toBe(updatedMenuItem.price);
+  it("should retrieve a menu item by ID", async () => {
+    const testMenuItem = {
+      name: "Ice cream",
+      price: 4.5,
+    };
+    // Create a menu item first
+    const createdItem = await createMenuItem(db, testMenuItem);
+
+    const menuItem = await getMenuItemById(
+      db,
+      Number(createdItem.lastInsertRowid)
+    );
+    expect(menuItem[0]).toBeDefined(); // Should return a menu item
+    expect(menuItem[0]).toEqual(
+      expect.objectContaining({
+        name: testMenuItem.name,
+        price: testMenuItem.price,
+      })
+    );
   });
 
-  it("should delete a menu item", async () => {
-    await deleteMenuItemByName(db, "Pizza");
-    const menuItems = await getMenuItemByName(db, "Pizza");
-    expect(menuItems).toHaveLength(0);
+  it("should update a menu item by ID", async () => {
+    const testMenuItem = {
+      name: "Cheeseburger",
+      price: 9.99,
+    };
+    // Create a menu item first
+    const createdItem = await createMenuItem(db, testMenuItem);
+
+    const updatedData = {
+      name: "Double Cheeseburger",
+      price: 12.99,
+    };
+
+    await updateMenuItemById(
+      db,
+      Number(createdItem.lastInsertRowid),
+      updatedData
+    );
+
+    const updatedMenuItem = await getMenuItemById(
+      db,
+      Number(createdItem.lastInsertRowid)
+    );
+    expect(updatedMenuItem[0]).toEqual(
+      expect.objectContaining({
+        id: Number(createdItem.lastInsertRowid), // ID should remain the same
+        name: updatedData.name,
+        price: updatedData.price,
+      })
+    );
+  });
+
+  it("should delete a menu item by ID", async () => {
+    const testMenuItem = {
+      name: "Pizza",
+      price: 12.99,
+    };
+    // Create a menu item first
+    const createdItem = await createMenuItem(db, testMenuItem);
+
+    await deleteMenuItemById(db, Number(createdItem.lastInsertRowid));
+    const menuItem = await getMenuItemById(
+      db,
+      Number(createdItem.lastInsertRowid)
+    );
+    expect(menuItem[0]).toBeUndefined(); // Should return no menu item
   });
 });

@@ -11,7 +11,6 @@ beforeAll(() => {
   db.exec("DELETE FROM menu_items");
   db.exec("DELETE FROM orders");
   db.exec("DELETE FROM order_items");
-  db.exec("DELETE FROM customers_to_orders");
   db.exec("PRAGMA foreign_keys = ON");
 });
 
@@ -24,7 +23,6 @@ describe("Schema Validation", () => {
     expect(tableNames).toContain("menu_items");
     expect(tableNames).toContain("orders");
     expect(tableNames).toContain("order_items");
-    expect(tableNames).toContain("customers_to_orders");
   });
 
   it("should have correct columns in customers table", () => {
@@ -58,24 +56,11 @@ describe("Schema Validation", () => {
     const columns = db.prepare("PRAGMA table_info(order_items);").all();
     const columnNames = columns.map((col) => col.name);
 
-    expect(columnNames).toEqual(
-      expect.arrayContaining(["id", "order_id", "menu_item_id", "quantity"])
-    );
+    expect(columnNames).toEqual(expect.arrayContaining(["id", "quantity"]));
   });
 
-  it("should have correct columns in customers_to_orders table", () => {
-    const columns = db.prepare("PRAGMA table_info(customers_to_orders);").all();
-    const columnNames = columns.map((col) => col.name);
-
-    expect(columnNames).toEqual(
-      expect.arrayContaining(["customer_id", "order_id"])
-    );
-  });
-
-  it("should have correct foreign key relationships", () => {
-    const foreignKeys = db
-      .prepare("PRAGMA foreign_key_list(customers_to_orders);")
-      .all();
+  it("should have correct foreign key relationships in orders table", () => {
+    const foreignKeys = db.prepare("PRAGMA foreign_key_list(orders);").all();
 
     expect(foreignKeys).toEqual(
       expect.arrayContaining([
@@ -84,14 +69,32 @@ describe("Schema Validation", () => {
           to: "id",
           table: "customers",
         }),
+      ])
+    );
+  });
+
+  it("should have correct foreign key relationships in order_items table", () => {
+    const foreignKeys = db
+      .prepare("PRAGMA foreign_key_list(order_items);")
+      .all();
+
+    expect(foreignKeys).toEqual(
+      expect.arrayContaining([
         expect.objectContaining({
           from: "order_id",
           to: "id",
           table: "orders",
         }),
+        expect.objectContaining({
+          from: "menu_item_id",
+          to: "id",
+          table: "menu_items",
+        }),
       ])
     );
   });
+});
 
-  // Additional tests can be added to check relations and other constraints
+afterAll(() => {
+  db.close();
 });
