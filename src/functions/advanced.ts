@@ -127,9 +127,7 @@ export async function suggestMenuItemsForCustomer(
   const customer = await getCustomerByPhone(db, phone);
 
   if (!customer) {
-    return {
-      recommendedItems: [],
-    };
+    return [];
   }
 
   const customerId = Number(customer.id);
