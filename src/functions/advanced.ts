@@ -43,12 +43,12 @@ export async function placeOrder(
     const existingCustomer = await getCustomerByPhone(trx, customerData.phone);
     let customerId: number;
 
-    if (existingCustomer.length === 0) {
+    if (!existingCustomer) {
       // Create a new customer if not found
       const newCustomer = await createCustomer(trx, customerData);
       customerId = Number(newCustomer.lastInsertRowid); // Get the ID of the newly created customer
     } else {
-      customerId = Number(existingCustomer[0].id); // Get the existing customer's ID
+      customerId = Number(existingCustomer.id); // Get the existing customer's ID
     }
 
     // Calculate the total cost of the order
@@ -56,7 +56,7 @@ export async function placeOrder(
     for (const item of items) {
       const menuItem = await getMenuItemById(trx, item.menuItemId); // You need to implement this function
       if (menuItem) {
-        totalAmount += menuItem[0].price * item.quantity;
+        totalAmount += menuItem.price * item.quantity;
       }
     }
 
@@ -126,13 +126,13 @@ export async function suggestMenuItemsForCustomer(
   // Fetch the customer's order history using their phone number
   const customer = await getCustomerByPhone(db, phone);
 
-  if (customer.length === 0) {
+  if (!customer) {
     return {
       recommendedItems: [],
     };
   }
 
-  const customerId = Number(customer[0].id);
+  const customerId = Number(customer.id);
 
   // Join to find ordered items
   const orderedItems = await db
@@ -163,7 +163,5 @@ export async function suggestMenuItemsForCustomer(
     })
   );
 
-  return {
-    recommendedItems: recommendedItems,
-  };
+  return recommendedItems;
 }

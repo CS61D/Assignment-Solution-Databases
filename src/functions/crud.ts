@@ -26,7 +26,15 @@ export async function getCustomerByPhone(
   db: BetterSQLite3Database,
   phone: string
 ) {
-  return await db.select().from(customers).where(eq(customers.phone, phone));
+  const customer = await db
+    .select()
+    .from(customers)
+    .where(eq(customers.phone, phone));
+
+  if (customer.length === 0) {
+    return null;
+  }
+  return customer[0]; // Cast the result
 }
 
 // Update a Customer by Phone
@@ -69,7 +77,15 @@ export async function createMenuItem(
 
 // Get a Menu Item by Name
 export async function getMenuItemById(db: BetterSQLite3Database, id: number) {
-  return await db.select().from(menuItems).where(eq(menuItems.id, id));
+  const menuitem = await db
+    .select()
+    .from(menuItems)
+    .where(eq(menuItems.id, id));
+
+  if (menuitem.length === 0) {
+    return null;
+  }
+  return menuitem[0];
 }
 
 // Update a Menu Item by Name
@@ -118,7 +134,13 @@ export async function getOrders(db: BetterSQLite3Database) {
 
 // Get an Order by ID
 export async function getOrderById(db: BetterSQLite3Database, id: number) {
-  return await db.select().from(orders).where(eq(orders.id, id));
+  const order = await db.select().from(orders).where(eq(orders.id, id));
+
+  if (order.length === 0) {
+    return null;
+  }
+
+  return order[0];
 }
 
 // Update an Order
@@ -159,10 +181,15 @@ export async function getOrderItemsByOrderId(
   db: BetterSQLite3Database,
   orderId: number
 ) {
-  return await db
+  const orderItem = await db
     .select()
     .from(orderItems)
     .where(eq(orderItems.orderId, orderId));
+
+  if (orderItem.length === 0) {
+    return null;
+  }
+  return orderItem[0];
 }
 
 // Update an Order Item

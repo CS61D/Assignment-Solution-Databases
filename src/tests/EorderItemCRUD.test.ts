@@ -14,10 +14,33 @@ import { eq, or, sql } from "drizzle-orm/sql";
 
 const db = drizzle(new Database("db/testdb.sqlite"));
 
+// Setup: Create the customers table if it does not exist
 beforeAll(() => {
   // Disable foreign key checks
   db.run(sql`PRAGMA foreign_keys = OFF`);
-
+  db.run(sql`CREATE TABLE IF NOT EXISTS customers (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT NOT NULL UNIQUE
+  )`);
+  db.run(sql`CREATE TABLE IF NOT EXISTS menu_items (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    price REAL NOT NULL
+  )`);
+  db.run(sql`CREATE TABLE IF NOT EXISTS orders (
+    id INTEGER PRIMARY KEY,
+    customer_id INTEGER NOT NULL,
+    total_amount REAL NOT NULL,
+    order_date TEXT NOT NULL
+  )`);
+  db.run(sql`CREATE TABLE IF NOT EXISTS order_items (
+    id INTEGER PRIMARY KEY,
+    order_id INTEGER NOT NULL,
+    menu_item_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL
+  )`);
   // Execute each SQL statement separately
   db.run(sql`DELETE FROM customers`);
   db.run(sql`DELETE FROM menu_items`);
@@ -40,20 +63,28 @@ describe("Order Items Functions", () => {
     phone: "1234567890",
   };
 
-  const testOrder = {
+  const testOrder1 = {
     totalAmount: 27.97,
     orderDate: "2024-10-14",
     customerId: 1, // Placeholder, will be updated after creating a customer
   };
 
-  const testOrderItem = {
-    orderId: 1, // Placeholder, will be updated after creating an order
-    menuItemId: 1, // Placeholder, will be updated after creating a menu item
-    quantity: 3,
+  const testOrder2 = {
+    totalAmount: 35.96,
+    orderDate: "2024-10-15",
+    customerId: 1, // Placeholder, will be updated after creating a customer
+  };
+
+  const testOrder3 = {
+    totalAmount: 19.98,
+    orderDate: "2024-10-16",
+    customerId: 1, // Placeholder, will be updated after creating a customer
   };
 
   let customerId: number;
-  let orderId: number;
+  let orderId1: number;
+  let orderId2: number;
+  let orderId3: number;
   let menuItemId: number;
 
   beforeAll(async () => {
@@ -64,61 +95,90 @@ describe("Order Items Functions", () => {
     // Create a menu item
     const createdMenuItem = await createMenuItem(db, testMenuItem);
     menuItemId = Number(createdMenuItem.lastInsertRowid); // Capture the menu item ID
-
-    // Create an order with the newly created customer ID
-    const createdOrder = await createOrder(db, {
-      ...testOrder,
-      customerId, // Use the created customer ID
-    });
-    orderId = Number(createdOrder.lastInsertRowid); // Capture the order ID
   });
 
   it("should create an order item", async () => {
-    const orderItemData = { ...testOrderItem, orderId, menuItemId };
+    // Create an order with the newly created customer ID
+    const createdOrder = await createOrder(db, {
+      ...testOrder1,
+      customerId, // Use the created customer ID
+    });
+    orderId1 = Number(createdOrder.lastInsertRowid); // Capture the order ID
+    const testOrderItem = {
+      orderId: 1, // Placeholder, will be updated after creating an order
+      menuItemId: 1, // Placeholder, will be updated after creating a menu item
+      quantity: 3,
+    };
+    const orderItemData = { ...testOrderItem, orderId1, menuItemId };
     const result = await createOrderItem(db, orderItemData);
     expect(result).toBeDefined();
     expect(result.lastInsertRowid).toBeDefined();
   });
 
   it("should retrieve order items by order ID", async () => {
+    // Create an order with the newly created customer ID
+    const createdOrder = await createOrder(db, {
+      ...testOrder2,
+      customerId, // Use the created customer ID
+    });
+    orderId2 = Number(createdOrder.lastInsertRowid); // Capture the order ID
+    const testOrderItem = {
+      orderId: 2, // Placeholder, will be updated after creating an order
+      menuItemId: 1, // Placeholder, will be updated after creating a menu item
+      quantity: 3,
+    };
     // Create an order item first
-    await createOrderItem(db, { ...testOrderItem, orderId, menuItemId });
+    await createOrderItem(db, {
+      ...testOrderItem,
+      orderId: orderId2,
+      menuItemId,
+    });
 
-    const orderItemsList = await getOrderItemsByOrderId(db, orderId);
+    const orderItemsList = await getOrderItemsByOrderId(db, orderId2);
     expect(orderItemsList).toBeDefined();
-    expect(orderItemsList).toHaveLength(1); // Expect one order item
-    expect(orderItemsList[0]).toEqual(
+    expect(orderItemsList).toEqual(
       expect.objectContaining({
-        order_id: orderId,
-        menu_item_id: menuItemId,
+        orderId: orderId2,
+        menuItemId: menuItemId,
         quantity: testOrderItem.quantity,
       })
     );
   });
 
   it("should update an order item", async () => {
+    // Create an order with the newly created customer ID
+    const createdOrder = await createOrder(db, {
+      ...testOrder1,
+      customerId, // Use the created customer ID
+    });
+    orderId3 = Number(createdOrder.lastInsertRowid); // Capture the order ID
+    const testOrderItem = {
+      orderId: 3, // Placeholder, will be updated after creating an order
+      menuItemId: 1, // Placeholder, will be updated after creating a menu item
+      quantity: 3,
+    };
     // Create an order item first
     const createdOrderItem = await createOrderItem(db, {
       ...testOrderItem,
-      orderId,
+      orderId: orderId3,
       menuItemId,
     });
 
     const updatedData = {
-      orderId,
+      orderId: orderId3,
       menuItemId,
       quantity: 5, // New quantity
     };
 
-    await updateOrderItem(db, orderId, menuItemId, updatedData);
+    await updateOrderItem(db, orderId3, menuItemId, updatedData);
 
-    const updatedOrderItems = await getOrderItemsByOrderId(db, orderId);
-    expect(updatedOrderItems).toHaveLength(1); // Still should be one item
-    expect(updatedOrderItems[0]).toEqual(
+    const updatedOrderItems = await getOrderItemsByOrderId(db, orderId3);
+    expect(updatedOrderItems).toBeDefined();
+    expect(updatedOrderItems).toEqual(
       expect.objectContaining({
         id: Number(createdOrderItem.lastInsertRowid), // ID should remain the same
-        order_id: orderId,
-        menu_item_id: menuItemId,
+        orderId: orderId3,
+        menuItemId: menuItemId,
         quantity: updatedData.quantity,
       })
     );
@@ -126,10 +186,22 @@ describe("Order Items Functions", () => {
 
   it("should delete order items by order ID", async () => {
     // Create an order item first
-    await createOrderItem(db, { ...testOrderItem, orderId, menuItemId });
+    const orderItemsList = await getOrderItemsByOrderId(db, orderId1);
+    expect(orderItemsList).toBeDefined();
+    await deleteOrderItemsByOrderId(db, orderId1);
+    const deletedOrderItems = await getOrderItemsByOrderId(db, orderId1);
+    expect(deletedOrderItems).toBeNull();
 
-    await deleteOrderItemsByOrderId(db, orderId);
-    const orderItemsList = await getOrderItemsByOrderId(db, orderId);
-    expect(orderItemsList).toHaveLength(0); // Should return no order items
+    const orderItemsList2 = await getOrderItemsByOrderId(db, orderId2);
+    expect(orderItemsList2).toBeDefined();
+    await deleteOrderItemsByOrderId(db, orderId2);
+    const deletedOrderItems2 = await getOrderItemsByOrderId(db, orderId2);
+    expect(deletedOrderItems2).toBeNull();
+
+    const orderItemsList3 = await getOrderItemsByOrderId(db, orderId3);
+    expect(orderItemsList3).toBeDefined();
+    await deleteOrderItemsByOrderId(db, orderId3);
+    const deletedOrderItems3 = await getOrderItemsByOrderId(db, orderId3);
+    expect(deletedOrderItems3).toBeNull();
   });
 });
