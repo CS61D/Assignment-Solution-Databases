@@ -6,22 +6,50 @@ import {
   totalSale,
   suggestMenuItemsForCustomer,
 } from "../functions/advanced";
-import { createCustomer, createMenuItem } from "../functions/crud";
+import {
+  createCustomer,
+  createMenuItem,
+  deleteOrder,
+  getCustomerByPhone,
+  getOrderById,
+} from "../functions/crud";
 import { orders, orderItems } from "../schemas/schema";
 import { eq, sql } from "drizzle-orm/sql";
 
-// Initialize the database
 const db = drizzle(new Database("db/testdb.sqlite"));
 
+// Setup: Create the customers table if it does not exist
 beforeAll(() => {
   // Disable foreign key checks
   db.run(sql`PRAGMA foreign_keys = OFF`);
-
-  // Clear the tables before each test
-  db.run(sql`DELETE FROM order_items`);
-  db.run(sql`DELETE FROM orders`);
-  db.run(sql`DELETE FROM menu_items`);
+  db.run(sql`CREATE TABLE IF NOT EXISTS customers (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT NOT NULL UNIQUE
+  )`);
+  db.run(sql`CREATE TABLE IF NOT EXISTS menu_items (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    price REAL NOT NULL
+  )`);
+  db.run(sql`CREATE TABLE IF NOT EXISTS orders (
+    id INTEGER PRIMARY KEY,
+    customer_id INTEGER NOT NULL,
+    total_amount REAL NOT NULL,
+    order_date TEXT NOT NULL
+  )`);
+  db.run(sql`CREATE TABLE IF NOT EXISTS order_items (
+    id INTEGER PRIMARY KEY,
+    order_id INTEGER NOT NULL,
+    menu_item_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL
+  )`);
+  // Execute each SQL statement separately
   db.run(sql`DELETE FROM customers`);
+  db.run(sql`DELETE FROM menu_items`);
+  db.run(sql`DELETE FROM orders`);
+  db.run(sql`DELETE FROM order_items`);
 
   // Re-enable foreign key checks
   db.run(sql`PRAGMA foreign_keys = ON`);
@@ -39,6 +67,21 @@ describe("Order Functions", () => {
     price: 10.99,
   };
 
+  const testMenuItem2 = {
+    name: "Pizza",
+    price: 12.99,
+  };
+
+  const testMenuItem3 = {
+    name: "Ice Cream",
+    price: 5.99,
+  };
+
+  const testMenuItem4 = {
+    name: "Fries",
+    price: 3.99,
+  };
+
   const testOrderData = {
     customer: testCustomer,
     items: [
@@ -49,20 +92,96 @@ describe("Order Functions", () => {
     ],
   };
 
-  let customerId: number;
+  const testOrderData2 = {
+    customer: testCustomer,
+    items: [
+      {
+        menuItemId: 2, // Placeholder, will be updated after creating a menu item
+        quantity: 1,
+      },
+    ],
+  };
+
+  const testOrderData3 = {
+    customer: testCustomer,
+    items: [
+      {
+        menuItemId: 3, // Placeholder, will be updated after creating a menu item
+        quantity: 1,
+      },
+    ],
+  };
+
+  const testOrderData4 = {
+    customer: testCustomer,
+    items: [
+      {
+        menuItemId: 4, // Placeholder, will be updated after creating a menu item
+        quantity: 2,
+      },
+    ],
+  };
+
+  const testOrderData5 = {
+    customer: testCustomer,
+    items: [
+      {
+        menuItemId: 1, // Placeholder, will be updated after creating a menu item
+        quantity: 1,
+      },
+    ],
+  };
+
+  const testOrderData6 = {
+    customer: testCustomer,
+    items: [
+      {
+        menuItemId: 3, // Placeholder, will be updated after creating a menu item
+        quantity: 1,
+      },
+    ],
+  };
+
+  const testOrderData7 = {
+    customer: testCustomer,
+    items: [
+      {
+        menuItemId: 4, // Placeholder, will be updated after creating a menu item
+        quantity: 1,
+      },
+    ],
+  };
+
+  const testOrderData8 = {
+    customer: testCustomer,
+    items: [
+      {
+        menuItemId: 3, // Placeholder, will be updated after creating a menu item
+        quantity: 1,
+      },
+    ],
+  };
+
   let menuItemId: number;
+  let menuItemId2: number;
+  let menuItemId3: number;
+  let menuItemId4: number;
 
   beforeAll(async () => {
-    // Create a customer
-    const createdCustomer = await createCustomer(db, testCustomer);
-    customerId = Number(createdCustomer.lastInsertRowid); // Capture the customer ID
-
     // Create a menu item
     const createdMenuItem = await createMenuItem(db, testMenuItem);
+    const createdMenuItem2 = await createMenuItem(db, testMenuItem2);
+    const createdMenuItem3 = await createMenuItem(db, testMenuItem3);
+    const createdMenuItem4 = await createMenuItem(db, testMenuItem4);
     menuItemId = Number(createdMenuItem.lastInsertRowid); // Capture the menu item ID
-
+    menuItemId2 = Number(createdMenuItem2.lastInsertRowid); // Capture the menu item ID
+    menuItemId3 = Number(createdMenuItem3.lastInsertRowid); // Capture the menu item ID
+    menuItemId4 = Number(createdMenuItem4.lastInsertRowid); // Capture the menu item
     // Update the test order data with the valid menu item ID
     testOrderData.items[0].menuItemId = menuItemId;
+    testOrderData2.items[0].menuItemId = menuItemId2;
+    testOrderData3.items[0].menuItemId = menuItemId3;
+    testOrderData4.items[0].menuItemId = menuItemId4;
   });
 
   it("should place an order and create a customer if not exists", async () => {
@@ -70,16 +189,20 @@ describe("Order Functions", () => {
     expect(result).toBeDefined();
     expect(result).toHaveProperty("orderId"); // Ensure an order ID is returned
 
-    const order = await db
-      .select()
-      .from(orders)
-      .where(eq(orders.id, Number(result.orderId)));
-    expect(order).toHaveLength(1);
-    expect(order[0]).toEqual(
+    const order = await getOrderById(db, Number(result.orderId));
+    expect(order).toBeDefined();
+    expect(order).toEqual(
       expect.objectContaining({
-        customerId: customerId, // Ensure the order is linked to the correct customer
+        customerId: 1,
+        id: 1,
+        orderDate: new Date().toISOString().split("T")[0],
+        totalAmount: 21.98,
       })
     );
+
+    // Validate the customer
+    const customer = await getCustomerByPhone(db, testCustomer.phone);
+    expect(customer).toBeDefined();
 
     // Validate the order items
     const orderItem = await db
@@ -89,21 +212,43 @@ describe("Order Functions", () => {
     expect(orderItem).toHaveLength(1);
     expect(orderItem[0]).toEqual(
       expect.objectContaining({
-        menu_item_id: menuItemId,
+        menuItemId: menuItemId,
         quantity: testOrderData.items[0].quantity,
       })
     );
+
+    // delete the order
+    await deleteOrder(db, Number(result.orderId));
+
+    // Validate the order is deleted
+    const orderDeleted = await getOrderById(db, Number(result.orderId));
+    expect(orderDeleted).toBeNull();
   });
 
   it("should calculate total sales for a specific day", async () => {
     // Place an order to have sales data
     await placeOrder(db, testOrderData);
+    // Place another order for today
+    await placeOrder(db, testOrderData2);
 
     const date = new Date().toISOString().split("T")[0]; // Get today's date
     const result = await totalSale(db, { date });
 
     expect(result).toBeDefined();
-    expect(result.totalSales).toBeGreaterThan(0); // Ensure total sales is greater than 0
+    const totalSales =
+      testOrderData.items[0].quantity * testMenuItem.price +
+      testOrderData2.items[0].quantity * testMenuItem2.price;
+    expect(result.totalSales).toEqual(totalSales); // Expect the total sales for today
+
+    // delete the order
+    await deleteOrder(db, 1);
+    await deleteOrder(db, 2);
+
+    // Validate the order is deleted
+    const orderDeleted = await getOrderById(db, 1);
+    expect(orderDeleted).toBeNull();
+    const orderDeleted2 = await getOrderById(db, 2);
+    expect(orderDeleted2).toBeNull();
   });
 
   it("should suggest menu items for a customer based on order history", async () => {
@@ -113,10 +258,29 @@ describe("Order Functions", () => {
     const result = await suggestMenuItemsForCustomer(db, testCustomer.phone);
 
     expect(result).toBeDefined();
-    expect(result.recommendedItems).toHaveLength(1); // Expect at least one recommended item
-    expect(result.recommendedItems[0]).toHaveProperty(
-      "name",
-      testMenuItem.name
-    ); // Check the recommended item matches
+    expect(result).toHaveLength(1); // Expect at least one recommended item
+    expect(result[0]).toHaveProperty("name", testMenuItem.name); // Check the recommended item matches
+
+    // place another order
+    await placeOrder(db, testOrderData2);
+    await placeOrder(db, testOrderData3);
+    await placeOrder(db, testOrderData4);
+    await placeOrder(db, testOrderData5);
+    await placeOrder(db, testOrderData6);
+    await placeOrder(db, testOrderData7);
+    await placeOrder(db, testOrderData8);
+
+    const result2 = await suggestMenuItemsForCustomer(db, testCustomer.phone);
+    // the recommended items should be item 3, 1, and 4
+    expect(result2).toBeDefined();
+    expect(result2).toHaveLength(3); // Expect at least one recommended item
+    // take out the id field of each item in the result
+    const result2NoId = result2.map((item) => {
+      const { id, name, price } = item;
+      return name;
+    });
+    expect(result2NoId).toContain(testMenuItem3.name);
+    expect(result2NoId).toContain(testMenuItem.name);
+    expect(result2NoId).toContain(testMenuItem4.name);
   });
 });

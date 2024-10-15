@@ -16,7 +16,29 @@ const db = drizzle(new Database("db/testdb.sqlite"));
 beforeAll(() => {
   // Disable foreign key checks
   db.run(sql`PRAGMA foreign_keys = OFF`);
-
+  db.run(sql`CREATE TABLE IF NOT EXISTS customers (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT NOT NULL UNIQUE
+  )`);
+  db.run(sql`CREATE TABLE IF NOT EXISTS menu_items (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    price REAL NOT NULL
+  )`);
+  db.run(sql`CREATE TABLE IF NOT EXISTS orders (
+    id INTEGER PRIMARY KEY,
+    customer_id INTEGER NOT NULL,
+    total_amount REAL NOT NULL,
+    order_date TEXT NOT NULL
+  )`);
+  db.run(sql`CREATE TABLE IF NOT EXISTS order_items (
+    id INTEGER PRIMARY KEY,
+    order_id INTEGER NOT NULL,
+    menu_item_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL
+  )`);
   // Execute each SQL statement separately
   db.run(sql`DELETE FROM customers`);
   db.run(sql`DELETE FROM menu_items`);
@@ -51,7 +73,7 @@ describe("Customer CRUD Operations", () => {
     await createCustomer(db, testCustomer);
 
     const customer = await getCustomerByPhone(db, testCustomer.phone);
-    expect(customer[0]).toEqual(
+    expect(customer).toEqual(
       expect.objectContaining({
         name: testCustomer.name,
         email: testCustomer.email,
@@ -79,7 +101,7 @@ describe("Customer CRUD Operations", () => {
     await updateCustomerByPhone(db, testCustomer.phone, updatedData);
 
     const updatedCustomer = await getCustomerByPhone(db, testCustomer.phone);
-    expect(updatedCustomer[0]).toEqual(
+    expect(updatedCustomer).toEqual(
       expect.objectContaining({
         name: updatedData.name,
         email: updatedData.email,
@@ -100,6 +122,6 @@ describe("Customer CRUD Operations", () => {
 
     await deleteCustomerByPhone(db, testCustomer.phone);
     const customer = await getCustomerByPhone(db, testCustomer.phone);
-    expect(customer).toHaveLength(0); // Should return no customer
+    expect(customer).toBeNull(); // Should return no customer
   });
 });
