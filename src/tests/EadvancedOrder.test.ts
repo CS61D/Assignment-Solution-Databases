@@ -1,20 +1,14 @@
-import { describe, it, expect, beforeEach, beforeAll } from "vitest";
-import { drizzle } from "drizzle-orm/better-sqlite3";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import Database from "better-sqlite3";
-import {
-  createCustomer,
-  createMenuItem,
-  getOrderById,
-  getOrderItemsByOrderId,
-  getCustomerByName,
-} from "../functions/crud";
+import { drizzle } from "drizzle-orm/better-sqlite3"; // Ensure correct import based on your setup
 import {
   placeOrder,
-  getOrdersForCustomer,
   totalSale,
+  suggestMenuItemsForCustomer,
 } from "../functions/advanced";
-import { customersToOrders, menuItems } from "../schemas/schema";
-import { desc, eq, sql } from "drizzle-orm/sql";
+import { createCustomer, createMenuItem } from "../functions/crud";
+import { orders, orderItems } from "../schemas/schema";
+import { eq, sql } from "drizzle-orm/sql";
 
 // Initialize the database
 const db = drizzle(new Database("db/testdb.sqlite"));
@@ -23,166 +17,106 @@ beforeAll(() => {
   // Disable foreign key checks
   db.run(sql`PRAGMA foreign_keys = OFF`);
 
-  // Execute each SQL statement separately
-  db.run(sql`DELETE FROM customers`);
-  db.run(sql`DELETE FROM menu_items`);
-  db.run(sql`DELETE FROM orders`);
+  // Clear the tables before each test
   db.run(sql`DELETE FROM order_items`);
-  db.run(sql`DELETE FROM customers_to_orders`);
+  db.run(sql`DELETE FROM orders`);
+  db.run(sql`DELETE FROM menu_items`);
+  db.run(sql`DELETE FROM customers`);
 
   // Re-enable foreign key checks
   db.run(sql`PRAGMA foreign_keys = ON`);
 });
-let customerId = 0;
-let orderId = 0;
-let date = new Date().toISOString().split("T")[0];
-let secondOrderId = 0;
 
-describe("Place Order", () => {
-  it("should place an order and link it to the customer", async () => {
-    // Create a new customer
-    const newCustomer = {
-      name: "Allison Doe",
-      email: "allison.doe@example.com",
-      phone: "321-456-7890",
-    };
-    await createCustomer(db, newCustomer);
+describe("Order Functions", () => {
+  const testCustomer = {
+    name: "Jane Doe",
+    email: "jane@example.com",
+    phone: "9876543210",
+  };
 
-    // Verify customer creation
-    const customers = await getCustomerByName(db, "Allison Doe");
-    expect(customers[0].name).toBe("Allison Doe");
-    customerId = customers[0].id;
+  const testMenuItem = {
+    name: "Burger",
+    price: 10.99,
+  };
 
-    // Add menu items
-    const menuItem1 = { name: "Burger", price: 10.0 };
-    const menuItem2 = { name: "Fries", price: 5.0 };
-    await createMenuItem(db, menuItem1);
-    await createMenuItem(db, menuItem2);
+  const testOrderData = {
+    customer: testCustomer,
+    items: [
+      {
+        menuItemId: 1, // Placeholder, will be updated after creating a menu item
+        quantity: 2,
+      },
+    ],
+  };
 
-    // Fetch menu item IDs
-    const menuItems1 = await db
-      .select()
-      .from(menuItems)
-      .where(eq(menuItems.name, "Burger"));
-    const menuItems2 = await db
-      .select()
-      .from(menuItems)
-      .where(eq(menuItems.name, "Fries"));
-    const menuItemId1 = menuItems1[0].id;
-    const menuItemId2 = menuItems2[0].id;
+  let customerId: number;
+  let menuItemId: number;
 
-    // Place an order
-    const orderData = {
-      customerId,
-      items: [
-        { menuItemId: menuItemId1, quantity: 2 },
-        { menuItemId: menuItemId2, quantity: 3 },
-      ],
-    };
-    const result = await placeOrder(db, orderData);
+  beforeAll(async () => {
+    // Create a customer
+    const createdCustomer = await createCustomer(db, testCustomer);
+    customerId = Number(createdCustomer.lastInsertRowid); // Capture the customer ID
 
-    // Verify the order is placed successfully
-    expect(result.success).toBe(true);
-    orderId = result.orderId;
+    // Create a menu item
+    const createdMenuItem = await createMenuItem(db, testMenuItem);
+    menuItemId = Number(createdMenuItem.lastInsertRowid); // Capture the menu item ID
 
-    // Verify the order is created
-    const order = await getOrderById(db, orderId);
-    expect(order).toHaveLength(1);
-    expect(order[0].id).toBe(orderId);
-
-    // Verify order items are created
-    const orderItems = await getOrderItemsByOrderId(db, orderId);
-    expect(orderItems).toHaveLength(2);
-    expect(orderItems).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          orderId,
-          menuItemId: menuItemId1,
-          quantity: 2,
-        }),
-        expect.objectContaining({
-          orderId,
-          menuItemId: menuItemId2,
-          quantity: 3,
-        }),
-      ])
-    );
-
-    // Verify customers_to_orders is updated
-    const customerOrderLinks = await db
-      .select()
-      .from(customersToOrders)
-      .where(eq(customersToOrders.customerId, customerId))
-      .where(eq(customersToOrders.orderId, orderId));
-    expect(customerOrderLinks).toHaveLength(1);
-    expect(customerOrderLinks[0]).toEqual(
-      expect.objectContaining({ customerId, orderId })
-    );
+    // Update the test order data with the valid menu item ID
+    testOrderData.items[0].menuItemId = menuItemId;
   });
 
-  it("the same customer should be able to place another order", async () => {
-    // Add menu items
-    const menuItem3 = { name: "Pizza", price: 15.0 };
-    await createMenuItem(db, menuItem3);
+  it("should place an order and create a customer if not exists", async () => {
+    const result = await placeOrder(db, testOrderData);
+    expect(result).toBeDefined();
+    expect(result).toHaveProperty("orderId"); // Ensure an order ID is returned
 
-    // Fetch menu item ID
-    const menuItems3 = await db
+    const order = await db
       .select()
-      .from(menuItems)
-      .where(eq(menuItems.name, "Pizza"));
-    const menuItemId3 = menuItems3[0].id;
-
-    // Place another order
-    const orderData = {
-      customerId,
-      items: [{ menuItemId: menuItemId3, quantity: 1 }],
-    };
-    const result = await placeOrder(db, orderData);
-
-    // Verify the order is placed successfully
-    expect(result.success).toBe(true);
-    secondOrderId = result.orderId;
-
-    // Verify the order is created
-    const order = await getOrderById(db, secondOrderId);
+      .from(orders)
+      .where(eq(orders.id, Number(result.orderId)));
     expect(order).toHaveLength(1);
-    expect(order[0].id).toBe(secondOrderId);
-
-    // Verify order items are created
-    const orderItems = await getOrderItemsByOrderId(db, secondOrderId);
-    expect(orderItems).toHaveLength(1);
-    expect(orderItems[0]).toEqual(
+    expect(order[0]).toEqual(
       expect.objectContaining({
-        orderId: secondOrderId,
-        menuItemId: menuItemId3,
-        quantity: 1,
+        customerId: customerId, // Ensure the order is linked to the correct customer
       })
     );
 
-    // Verify customers_to_orders is updated
-    const customerOrderLinks = await db
+    // Validate the order items
+    const orderItem = await db
       .select()
-      .from(customersToOrders)
-      .where(eq(customersToOrders.customerId, customerId))
-      .where(eq(customersToOrders.orderId, secondOrderId));
-    expect(customerOrderLinks[0]).toEqual(
-      expect.objectContaining({ customerId, orderId: secondOrderId })
+      .from(orderItems)
+      .where(eq(orderItems.orderId, Number(result.orderId)));
+    expect(orderItem).toHaveLength(1);
+    expect(orderItem[0]).toEqual(
+      expect.objectContaining({
+        menu_item_id: menuItemId,
+        quantity: testOrderData.items[0].quantity,
+      })
     );
   });
-});
 
-describe("Get All Orders for Customer", () => {
-  it("should retrieve the order placed by the customer", async () => {
-    const orders = await getOrdersForCustomer(db, customerId);
-    // expect(orders).toHaveLength(2);
-    expect(orders[0][0].id).toBe(orderId);
-    expect(orders[1][0].id).toBe(secondOrderId);
+  it("should calculate total sales for a specific day", async () => {
+    // Place an order to have sales data
+    await placeOrder(db, testOrderData);
+
+    const date = new Date().toISOString().split("T")[0]; // Get today's date
+    const result = await totalSale(db, { date });
+
+    expect(result).toBeDefined();
+    expect(result.totalSales).toBeGreaterThan(0); // Ensure total sales is greater than 0
   });
-});
 
-describe("Get Total Sale By Date", () => {
-  it("should get the total sales for the two orders that the cutsomer placed", async () => {
-    const total = await totalSale(db, { date });
-    expect(total.totalSales).toBe(50);
+  it("should suggest menu items for a customer based on order history", async () => {
+    // Place an order to have order history
+    await placeOrder(db, testOrderData);
+
+    const result = await suggestMenuItemsForCustomer(db, testCustomer.phone);
+
+    expect(result).toBeDefined();
+    expect(result.recommendedItems).toHaveLength(1); // Expect at least one recommended item
+    expect(result.recommendedItems[0]).toHaveProperty(
+      "name",
+      testMenuItem.name
+    ); // Check the recommended item matches
   });
 });

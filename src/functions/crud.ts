@@ -1,151 +1,193 @@
-import { eq, gt } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import { customers, menuItems, orders, orderItems } from "../schemas/schema";
 import { z } from "zod";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 
-// Create schemas validation with Zod
+//////////////////////////////////////// CUSTOMERS ////////////////////////////////////////
+
+// Validation schema for customer data
 export const customerSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
   phone: z.string().min(1),
 });
 
+// Create a Customer
+export async function createCustomer(
+  db: BetterSQLite3Database,
+  data: z.infer<typeof customerSchema>
+) {
+  const validatedData = customerSchema.parse(data);
+  return await db.insert(customers).values(validatedData);
+}
+
+// Get a Customer by Phone
+export async function getCustomerByPhone(
+  db: BetterSQLite3Database,
+  phone: string
+) {
+  return await db.select().from(customers).where(eq(customers.phone, phone));
+}
+
+// Update a Customer by Phone
+export async function updateCustomerByPhone(
+  db: BetterSQLite3Database,
+  phone: string,
+  data: z.infer<typeof customerSchema>
+) {
+  const validatedData = customerSchema.partial().parse(data); // Allow partial updates
+  return await db
+    .update(customers)
+    .set(validatedData)
+    .where(eq(customers.phone, phone));
+}
+
+// Delete a Customer by Phone
+export async function deleteCustomerByPhone(
+  db: BetterSQLite3Database,
+  phone: string
+) {
+  return await db.delete(customers).where(eq(customers.phone, phone));
+}
+
+//////////////////////////////////////// MENU ITEMS ////////////////////////////////////////
+
+// Validation schema for menu item data
 export const menuItemSchema = z.object({
   name: z.string().min(1),
   price: z.number().positive(),
 });
 
+// Create a Menu Item
+export async function createMenuItem(
+  db: BetterSQLite3Database,
+  data: z.infer<typeof menuItemSchema>
+) {
+  const validatedData = menuItemSchema.parse(data);
+  return await db.insert(menuItems).values(validatedData);
+}
+
+// Get a Menu Item by Name
+export async function getMenuItemById(db: BetterSQLite3Database, id: number) {
+  return await db.select().from(menuItems).where(eq(menuItems.id, id));
+}
+
+// Update a Menu Item by Name
+export async function updateMenuItemById(
+  db: BetterSQLite3Database,
+  id: number,
+  data: z.infer<typeof menuItemSchema>
+) {
+  const validatedData = menuItemSchema.partial().parse(data); // Allow partial updates
+  return await db
+    .update(menuItems)
+    .set(validatedData)
+    .where(eq(menuItems.id, id));
+}
+
+// Delete a Menu Item by Name
+export async function deleteMenuItemById(
+  db: BetterSQLite3Database,
+  id: number
+) {
+  return await db.delete(menuItems).where(eq(menuItems.id, id));
+}
+
+//////////////////////////////////////// ORDERS ////////////////////////////////////////
+
+// Validation schema for order data
 export const orderSchema = z.object({
+  customerId: z.number().positive(),
   totalAmount: z.number().positive(),
   orderDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD format
 });
 
+// Create an Order
+export async function createOrder(
+  db: BetterSQLite3Database,
+  data: z.infer<typeof orderSchema>
+) {
+  const validatedData = orderSchema.parse(data);
+  return await db.insert(orders).values(validatedData);
+}
+
+// Get All Orders
+export async function getOrders(db: BetterSQLite3Database) {
+  return await db.select().from(orders);
+}
+
+// Get an Order by ID
+export async function getOrderById(db: BetterSQLite3Database, id: number) {
+  return await db.select().from(orders).where(eq(orders.id, id));
+}
+
+// Update an Order
+export async function updateOrder(
+  db: BetterSQLite3Database,
+  id: number,
+  data: z.infer<typeof orderSchema>
+) {
+  const validatedData = orderSchema.partial().parse(data); // Allow partial updates
+  return await db.update(orders).set(validatedData).where(eq(orders.id, id));
+}
+
+// Delete an Order
+export async function deleteOrder(db: BetterSQLite3Database, id: number) {
+  return await db.delete(orders).where(eq(orders.id, id));
+}
+
+//////////////////////////////////////// ORDER ITEMS ////////////////////////////////////////
+
+// Validation schema for order item data
 export const orderItemSchema = z.object({
   orderId: z.number().positive(),
   menuItemId: z.number().positive(),
   quantity: z.number().positive(),
 });
 
-export const customersToOrdersSchema = z.object({
-  customerId: z.number().positive(),
-  orderId: z.number().positive(),
-});
-
-// CRUD Functions for Customers
-export const createCustomer = async (
+// Create an Order Item
+export async function createOrderItem(
   db: BetterSQLite3Database,
-  data: z.infer<typeof customerSchema>
-) => {
-  const parsedData = customerSchema.parse(data);
-  return await db.insert(customers).values(parsedData);
-};
-
-export const getCustomerByName = async (db, name: string) => {
-  return await db.select().from(customers).where(eq(customers.name, name));
-};
-
-export const updateCustomer = async (
-  db,
-  name: string,
-  data: Partial<z.infer<typeof customerSchema>>
-) => {
-  const parsedData = customerSchema.partial().parse(data);
-  return await db
-    .update(customers)
-    .set(parsedData)
-    .where(eq(customers.name, name));
-};
-
-export const deleteCustomer = async (db, name: string) => {
-  return await db.delete(customers).where(eq(customers.name, name));
-};
-
-// CRUD Functions for Menu Items
-export const createMenuItem = async (
-  db,
-  data: z.infer<typeof menuItemSchema>
-) => {
-  const parsedData = menuItemSchema.parse(data);
-  return await db.insert(menuItems).values(parsedData);
-};
-
-export const getMenuItemByName = async (db, name: string) => {
-  return await db.select().from(menuItems).where(eq(menuItems.name, name));
-};
-
-export const updateMenuItemByName = async (
-  db,
-  name: string,
-  data: Partial<z.infer<typeof menuItemSchema>>
-) => {
-  const parsedData = menuItemSchema.partial().parse(data);
-  return await db
-    .update(menuItems)
-    .set(parsedData)
-    .where(eq(menuItems.name, name));
-};
-
-export const deleteMenuItemByName = async (db, name: string) => {
-  return await db.delete(menuItems).where(eq(menuItems.name, name));
-};
-
-// CRUD Functions for Orders
-export const createOrder = async (db, data: z.infer<typeof orderSchema>) => {
-  const parsedData = orderSchema.parse(data);
-  return await db.insert(orders).values(parsedData);
-};
-
-export const getOrders = async (db) => {
-  return await db.select().from(orders);
-};
-
-export const getOrderById = async (db, id: number) => {
-  return await db.select().from(orders).where(eq(orders.id, id));
-};
-
-export const updateOrder = async (
-  db,
-  id: number,
-  data: Partial<z.infer<typeof orderSchema>>
-) => {
-  const parsedData = orderSchema.partial().parse(data);
-  return await db.update(orders).set(parsedData).where(eq(orders.id, id));
-};
-
-export const deleteOrder = async (db, id: number) => {
-  return await db.delete(orders).where(eq(orders.id, id));
-};
-
-// CRUD Functions for Order Items
-export const createOrderItem = async (
-  db,
   data: z.infer<typeof orderItemSchema>
-) => {
-  const parsedData = orderItemSchema.parse(data);
-  return await db.insert(orderItems).values(parsedData);
-};
+) {
+  const validatedData = orderItemSchema.parse(data);
+  return await db.insert(orderItems).values(validatedData);
+}
 
-export const getOrderItemsByOrderId = async (db, orderId: number) => {
+// Get Order Items by Order ID
+export async function getOrderItemsByOrderId(
+  db: BetterSQLite3Database,
+  orderId: number
+) {
   return await db
     .select()
     .from(orderItems)
     .where(eq(orderItems.orderId, orderId));
-};
+}
 
-export const updateOrderItem = async (
-  db,
+// Update an Order Item
+export async function updateOrderItem(
+  db: BetterSQLite3Database,
   orderId: number,
   menuItemId: number,
-  data: Partial<z.infer<typeof orderItemSchema>>
-) => {
-  const parsedData = orderItemSchema.partial().parse(data);
+  data: z.infer<typeof orderItemSchema>
+) {
+  const validatedData = orderItemSchema.partial().parse(data); // Allow partial updates
   return await db
     .update(orderItems)
-    .set(parsedData)
-    .where(eq(orderItems.orderId, orderId))
-    .where(eq(orderItems.menuItemId, menuItemId));
-};
+    .set(validatedData)
+    .where(
+      and(
+        eq(orderItems.orderId, orderId),
+        eq(orderItems.menuItemId, menuItemId)
+      )
+    );
+}
 
-export const deleteOrderItemsbyOrderId = async (db, orderId: number) => {
+// Delete Order Items by Order ID
+export async function deleteOrderItemsByOrderId(
+  db: BetterSQLite3Database,
+  orderId: number
+) {
   return await db.delete(orderItems).where(eq(orderItems.orderId, orderId));
-};
+}
